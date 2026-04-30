@@ -94,6 +94,48 @@ Both scripts require the same flags and can be called with custom paths:
 | Schema validation | Pydantic — clear errors on bad values | Basic field checks only |
 | Test coverage | Full (`uv run pytest`) | None — tests only cover the Python path |
 
+## Using templates, values, and manifests from different repos
+
+Since `--templates`, `--output`, and `--values` accept any path, the render scripts work across repos as long as the directories are available locally. The two practical approaches are:
+
+**Git submodules** — add the other repos as submodules in an orchestrator repo, then point the flags at the submodule paths:
+
+```bash
+git submodule add <templates-repo-url> ext/templates
+git submodule add <values-repo-url>    ext/values
+git submodule add <manifests-repo-url> ext/manifests
+```
+
+```bash
+uv run scripts/render_templates.py \
+  --templates ext/templates \
+  --values    ext/values \
+  --output    ext/manifests
+```
+
+The pre-commit hook in the orchestrator repo can be updated with those paths and continues to enforce rendering on every commit. Tradeoff: submodules require `git submodule update --init` after cloning and add friction to contributor workflows.
+
+**CI pipeline** — each repo is cloned independently in the pipeline and paths are passed as arguments. No submodules needed, but pre-commit no longer enforces rendering on commit — it becomes a pipeline-only concern. Example pipeline steps:
+
+```bash
+git clone <templates-repo-url> templates-repo
+git clone <values-repo-url>    values-repo
+git clone <manifests-repo-url> manifests-repo
+
+uv run scripts/render_templates.py \
+  --templates templates-repo/templates \
+  --values    values-repo/values \
+  --output    manifests-repo/manifests
+
+cd manifests-repo && git add . && git commit -m "chore: render manifests" && git push
+```
+
+| | Git submodules | CI pipeline |
+|---|---|---|
+| Pre-commit enforcement | Yes | No — rendering is pipeline-only |
+| Contributor setup | `git submodule update --init` required | Standard clone |
+| Repo coupling | Orchestrator repo ties versions together | Repos are fully decoupled |
+
 ## Adding a new environment
 
 1. Create `values/<env>.yaml` with any overrides on top of `values/base.yaml`.
