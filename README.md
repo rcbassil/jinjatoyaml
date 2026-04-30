@@ -98,7 +98,39 @@ Both scripts require the same flags and can be called with custom paths:
 
 The pre-commit hook lives in this repo alongside the templates and rendered manifests. Values are maintained in a separate repo and made available locally via a git submodule or a CI clone.
 
-### Option 1: Git submodule
+### Option 1: Plain git clone
+
+Clone the values repo to a conventional path before running pre-commit:
+
+```bash
+git clone <values-repo-url> ext/values
+```
+
+Update `.pre-commit-config.yaml` to point at that path:
+
+```yaml
+entry: uv run scripts/render_templates.py --templates templates --output manifests --values ext/values
+```
+
+The hook works as-is — it only requires the path to exist on disk. Add `ext/values` to `.gitignore` so it isn't accidentally committed:
+
+```bash
+echo "ext/" >> .gitignore
+```
+
+Every contributor must clone the values repo manually before their first commit. A setup script makes this easy to enforce:
+
+```bash
+#!/usr/bin/env bash
+# setup.sh
+git clone <values-repo-url> ext/values
+uv sync --all-groups
+pre-commit install
+```
+
+Tradeoff: no version pin — everyone gets whatever `HEAD` of the values repo is at clone time, so two contributors can silently render against different values.
+
+### Option 2: Git submodule
 
 Add the values repo as a submodule:
 
@@ -120,7 +152,7 @@ git submodule update --init
 
 The pre-commit hook continues to enforce rendering on every commit. Tradeoff: the submodule pins a specific commit of the values repo — updating values requires a deliberate `git submodule update` and a follow-up commit here.
 
-### Option 2: CI pipeline
+### Option 3: CI pipeline
 
 Clone the values repo in the pipeline alongside this repo, pass the path as `--values`, then commit and push the rendered manifests back:
 
@@ -141,11 +173,11 @@ git push
 
 Pre-commit no longer enforces rendering on commit — the pipeline is the single source of truth. Tradeoff: rendering is decoupled from the commit workflow, so stale manifests are possible if the pipeline is skipped.
 
-| | Git submodule | CI pipeline |
-|---|---|---|
-| Pre-commit enforcement | Yes | No — pipeline only |
-| Contributor setup | `git submodule update --init` required | Standard clone |
-| Values versioning | Pinned to a submodule commit | Always uses latest (or a ref you specify) |
+| | Plain clone | Git submodule | CI pipeline |
+|---|---|---|---|
+| Pre-commit enforcement | Yes | Yes | No — pipeline only |
+| Contributor setup | Manual clone + convention | `git submodule update --init` | Standard clone |
+| Values versioning | Unpinned — latest at clone time | Pinned to a submodule commit | Latest (or a ref you specify) |
 
 ## Adding a new environment
 
