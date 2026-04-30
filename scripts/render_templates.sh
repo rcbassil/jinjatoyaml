@@ -1,11 +1,22 @@
 #!/usr/bin/env bash
 # Dependencies: yq (mikefarah/yq v4), jinja2-cli (pip install jinja2-cli)
+# Usage: ./render_templates.sh [--templates DIR] [--output DIR] [--values DIR]
 
 set -euo pipefail
 
 TEMPLATE_DIR="./templates"
 OUTPUT_DIR="./manifests"
 VALUES_DIR="./values"
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --templates) TEMPLATE_DIR="$2"; shift 2 ;;
+        --output)    OUTPUT_DIR="$2";   shift 2 ;;
+        --values)    VALUES_DIR="$2";   shift 2 ;;
+        *) echo "Unknown option: $1"; exit 1 ;;
+    esac
+done
+
 BASE_VALUES="$VALUES_DIR/base.yaml"
 
 validate_proxy() {

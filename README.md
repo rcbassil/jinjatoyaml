@@ -30,10 +30,22 @@ pre-commit install
 ## Rendering manually
 
 ```bash
-uv run scripts/render_templates.py
+uv run scripts/render_templates.py [--templates DIR] [--output DIR] [--values DIR]
 ```
 
-Rendered manifests are written to `manifests/<env>/`.
+| Flag | Default | Description |
+|---|---|---|
+| `--templates` | `templates` | Directory containing `.j2` template files |
+| `--output` | `manifests` | Directory where rendered manifests are written |
+| `--values` | `values` | Directory containing `base.yaml` and env override files |
+
+Example with custom paths:
+
+```bash
+uv run scripts/render_templates.py --templates src/templates --output out --values config/values
+```
+
+Rendered manifests are written to `<output>/<env>/`.
 
 ## Switching to the shell renderer
 
@@ -66,6 +78,12 @@ pip install jinja2-cli
   language: script
   files: \.(j2|jinja2|yaml|yml)$
   pass_filenames: false
+```
+
+Both scripts accept the same flags and can be called with custom paths:
+
+```bash
+./scripts/render_templates.sh --templates src/templates --output out --values config/values
 ```
 
 **Trade-offs vs the Python renderer:**
