@@ -1,23 +1,39 @@
 # jinjatoyaml
 
-Renders Jinja2 Kubernetes manifest templates against per-environment values files, with Pydantic schema validation and kubeconform manifest validation baked into the pre-commit pipeline.
+Renders Jinja2 Kubernetes manifest templates against per-environment values files, with Pydantic schema validation and kubeconform manifest validation baked into the pre-commit pipeline. Also supports Helm charts, using Jinja2-rendered values files as the Helm values layer.
 
 ## How it works
 
+**Plain manifests**
 ```
 values/base.yaml  ──┐
 values/nprod.yaml ──┤ deep merge ──► render_templates.py ──► manifests/nprod/deployment.yaml
 values/prod.yaml  ──┘                                    └──► manifests/prod/deployment.yaml
 ```
 
-On every commit, pre-commit runs two hooks in order:
+**Helm charts**
+```
+values/base.yaml  ──┐
+values/nprod.yaml ──┤ deep merge ──► render_templates.py ──► manifests/nprod/helm-values.yaml ──┐
+values/prod.yaml  ──┘                                    └──► manifests/prod/helm-values.yaml  ──┤
+                                                                                                  │
+charts/my-app/ ───────────────────────────────────────────────────────────────────────────────────┤
+                                                                                                  ▼
+                                                                              helm template | kubeconform
+```
+
+Jinja2 owns the **values layer** — it stamps out environment-specific `helm-values.yaml` files from your `values/` inputs. Helm owns the **resource layer** — it renders the actual `Deployment`, `Service`, etc. from the chart + those values. The two templating languages never mix.
+
+On every commit, pre-commit runs three hooks in order:
 1. **Render** — merges base + env values, validates with Pydantic, renders all `.j2` templates, and stages the output.
-2. **Validate** — runs `kubeconform --strict` against every file in `manifests/`.
+2. **Validate manifests** — runs `kubeconform --strict` against every file in `manifests/` (excluding `helm-values.yaml`).
+3. **Validate Helm charts** — for each chart in `charts/`, runs `helm template -f <env-values>` for every environment and pipes the output to `kubeconform --strict`.
 
 ## Requirements
 
 - [uv](https://docs.astral.sh/uv/)
 - [pre-commit](https://pre-commit.com/)
+- [helm](https://helm.sh/docs/intro/install/)
 - Go (used by pre-commit to install kubeconform automatically)
 
 ## Setup
@@ -349,11 +365,17 @@ git push
 
 1. Create `values/<env>.yaml` with any overrides on top of `values/base.yaml`.
 2. Run the render script — a new `manifests/<env>/` directory is created automatically.
+3. The Helm validation hook picks up the new `manifests/<env>/helm-values.yaml` automatically.
 
 ## Adding a new template
 
 1. Add a `.j2` file to `templates/`.
 2. The render script picks it up automatically on the next run.
+
+## Adding a new Helm chart
+
+1. Create `charts/<name>/` with a standard chart layout (`Chart.yaml`, `values.yaml`, `templates/`).
+2. The `helm-kubeconform` pre-commit hook picks it up automatically and validates it against every environment's rendered `helm-values.yaml`.
 
 ## Values schema
 
@@ -384,17 +406,28 @@ uv run pytest
 ## Project structure
 
 ```
+charts/
+  my-app/           # Example Helm chart
+    Chart.yaml
+    values.yaml     # Chart defaults (not env-specific)
+    templates/
 templates/          # Jinja2 templates (.j2)
+  helm-values.yaml.j2  # Rendered into per-env Helm values files
 values/
   base.yaml         # Shared defaults
   nprod.yaml        # Non-prod overrides
   prod.yaml         # Prod overrides
 manifests/
   nprod/            # Rendered output (committed)
+    deployment.yaml
+    helm-values.yaml   # Fed into helm template for nprod
   prod/
+    deployment.yaml
+    helm-values.yaml   # Fed into helm template for prod
 scripts/
-  render_templates.py  # Python renderer (default)
-  render_templates.sh  # Shell renderer (alternative, see above)
+  render_templates.py       # Python renderer (default)
+  render_templates.sh       # Shell renderer (alternative, see above)
+  validate_helm_charts.sh   # Runs helm template | kubeconform for all charts × envs
 tests/
   test_render.py
 ```

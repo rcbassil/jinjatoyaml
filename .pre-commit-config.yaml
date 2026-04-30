@@ -18,3 +18,12 @@ repos:
         additional_dependencies: ["github.com/yannh/kubeconform/cmd/kubeconform@v0.7.0"]
         files: ^manifests/.*\.yaml$
         exclude: helm-values\.yaml$
+
+  - repo: local
+    hooks:
+      - id: helm-kubeconform
+        name: Validate Helm charts
+        entry: scripts/validate_helm_charts.sh
+        language: script
+        files: ^charts/
+        pass_filenames: false
