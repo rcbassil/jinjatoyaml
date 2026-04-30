@@ -179,6 +179,96 @@ Pre-commit no longer enforces rendering on commit — the pipeline is the single
 | Contributor setup | Manual clone + convention | `git submodule update --init` | Standard clone |
 | Values versioning | Unpinned — latest at clone time | Pinned to a submodule commit | Latest (or a ref you specify) |
 
+## Split-repo setup: values here, templates + manifests in a separate repo
+
+In this layout the pre-commit hook lives in the **values repo** and triggers on every values change. Templates and rendered manifests live in a separate repo that must be available locally.
+
+What changes compared to the previous layout:
+
+- The render scripts (`render_templates.py` / `render_templates.sh`) and `.pre-commit-config.yaml` live in the values repo.
+- `--templates` and `--output` point into the cloned templates+manifests repo.
+- After rendering, the scripts must commit and push the new manifests **to the other repo** — a cross-repo push triggered on every commit.
+
+### Option 1: Plain git clone
+
+Clone the templates+manifests repo to a conventional path:
+
+```bash
+git clone <templates-manifests-repo-url> ext/templates-repo
+```
+
+Add it to `.gitignore`:
+
+```bash
+echo "ext/" >> .gitignore
+```
+
+Update `.pre-commit-config.yaml`:
+
+```yaml
+entry: uv run scripts/render_templates.py \
+  --templates ext/templates-repo/templates \
+  --output    ext/templates-repo/manifests \
+  --values    values
+```
+
+After rendering, the scripts must commit and push the manifests to the other repo. Add these steps at the end of both render scripts:
+
+```bash
+git -C ext/templates-repo add manifests/
+git -C ext/templates-repo commit -m "chore: render manifests"
+git -C ext/templates-repo push
+```
+
+Tradeoff: a commit in the values repo silently triggers a push to another repo, which can be surprising and will fail if the other repo has upstream changes that haven't been pulled.
+
+### Option 2: Git submodule
+
+Add the templates+manifests repo as a submodule:
+
+```bash
+git submodule add <templates-manifests-repo-url> ext/templates-repo
+```
+
+Update `.pre-commit-config.yaml`:
+
+```yaml
+entry: uv run scripts/render_templates.py \
+  --templates ext/templates-repo/templates \
+  --output    ext/templates-repo/manifests \
+  --values    values
+```
+
+Same cross-repo commit requirement applies. Tradeoff: the submodule pins a specific commit of the templates+manifests repo, so the rendered output is always consistent with a known template version.
+
+### Option 3: CI pipeline
+
+This is the most natural fit for this layout. The pipeline clones both repos, renders, then pushes manifests back to the templates+manifests repo:
+
+```bash
+git clone <values-repo-url>             values-repo
+git clone <templates-manifests-repo-url> templates-repo
+
+uv run values-repo/scripts/render_templates.py \
+  --templates templates-repo/templates \
+  --values    values-repo/values \
+  --output    templates-repo/manifests
+
+cd templates-repo
+git add manifests/
+git commit -m "chore: render manifests"
+git push
+```
+
+The cross-repo push is an explicit, visible pipeline step rather than a side effect of a commit hook.
+
+| | Plain clone | Git submodule | CI pipeline |
+|---|---|---|---|
+| Pre-commit enforcement | Yes | Yes | No — pipeline only |
+| Contributor setup | Manual clone + convention | `git submodule update --init` | Standard clone |
+| Cross-repo push | Implicit — side effect of commit | Implicit — side effect of commit | Explicit pipeline step |
+| Template versioning | Unpinned — latest at clone time | Pinned to a submodule commit | Latest (or a ref you specify) |
+
 ## Adding a new environment
 
 1. Create `values/<env>.yaml` with any overrides on top of `values/base.yaml`.
