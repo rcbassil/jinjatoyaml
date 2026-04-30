@@ -94,47 +94,58 @@ Both scripts require the same flags and can be called with custom paths:
 | Schema validation | Pydantic — clear errors on bad values | Basic field checks only |
 | Test coverage | Full (`uv run pytest`) | None — tests only cover the Python path |
 
-## Using templates, values, and manifests from different repos
+## Split-repo setup: manifests + templates here, values in a separate repo
 
-Since `--templates`, `--output`, and `--values` accept any path, the render scripts work across repos as long as the directories are available locally. The two practical approaches are:
+The pre-commit hook lives in this repo alongside the templates and rendered manifests. Values are maintained in a separate repo and made available locally via a git submodule or a CI clone.
 
-**Git submodules** — add the other repos as submodules in an orchestrator repo, then point the flags at the submodule paths:
+### Option 1: Git submodule
+
+Add the values repo as a submodule:
 
 ```bash
-git submodule add <templates-repo-url> ext/templates
-git submodule add <values-repo-url>    ext/values
-git submodule add <manifests-repo-url> ext/manifests
+git submodule add <values-repo-url> ext/values
 ```
 
-```bash
-uv run scripts/render_templates.py \
-  --templates ext/templates \
-  --values    ext/values \
-  --output    ext/manifests
+Update `.pre-commit-config.yaml` to point at the submodule:
+
+```yaml
+entry: uv run scripts/render_templates.py --templates templates --output manifests --values ext/values
 ```
 
-The pre-commit hook in the orchestrator repo can be updated with those paths and continues to enforce rendering on every commit. Tradeoff: submodules require `git submodule update --init` after cloning and add friction to contributor workflows.
-
-**CI pipeline** — each repo is cloned independently in the pipeline and paths are passed as arguments. No submodules needed, but pre-commit no longer enforces rendering on commit — it becomes a pipeline-only concern. Example pipeline steps:
+After cloning this repo, contributors must initialise the submodule:
 
 ```bash
-git clone <templates-repo-url> templates-repo
-git clone <values-repo-url>    values-repo
-git clone <manifests-repo-url> manifests-repo
+git submodule update --init
+```
 
-uv run scripts/render_templates.py \
-  --templates templates-repo/templates \
+The pre-commit hook continues to enforce rendering on every commit. Tradeoff: the submodule pins a specific commit of the values repo — updating values requires a deliberate `git submodule update` and a follow-up commit here.
+
+### Option 2: CI pipeline
+
+Clone the values repo in the pipeline alongside this repo, pass the path as `--values`, then commit and push the rendered manifests back:
+
+```bash
+git clone <this-repo-url>   manifests-repo
+git clone <values-repo-url> values-repo
+
+uv run manifests-repo/scripts/render_templates.py \
+  --templates manifests-repo/templates \
   --values    values-repo/values \
   --output    manifests-repo/manifests
 
-cd manifests-repo && git add . && git commit -m "chore: render manifests" && git push
+cd manifests-repo
+git add manifests/
+git commit -m "chore: render manifests"
+git push
 ```
 
-| | Git submodules | CI pipeline |
+Pre-commit no longer enforces rendering on commit — the pipeline is the single source of truth. Tradeoff: rendering is decoupled from the commit workflow, so stale manifests are possible if the pipeline is skipped.
+
+| | Git submodule | CI pipeline |
 |---|---|---|
-| Pre-commit enforcement | Yes | No — rendering is pipeline-only |
+| Pre-commit enforcement | Yes | No — pipeline only |
 | Contributor setup | `git submodule update --init` required | Standard clone |
-| Repo coupling | Orchestrator repo ties versions together | Repos are fully decoupled |
+| Values versioning | Pinned to a submodule commit | Always uses latest (or a ref you specify) |
 
 ## Adding a new environment
 
