@@ -1,0 +1,45 @@
+replicaCount: {{ replicas }}
+
+image:
+  repository: {{ image_repo }}
+  tag: "{{ image_tag }}"
+  pullPolicy: {{ image_pull_policy }}
+
+nameOverride: "{{ app_name }}"
+fullnameOverride: "{{ app_name }}"
+
+service:
+  type: ClusterIP
+  port: {{ port }}
+
+resources:
+  limits:
+    cpu: {{ resources.limits.cpu }}
+    memory: {{ resources.limits.memory }}
+  requests:
+    cpu: {{ resources.requests.cpu }}
+    memory: {{ resources.requests.memory }}
+
+podLabels:
+  env: {{ env }}
+  version: "{{ image_tag }}"
+{% if env_vars %}
+
+env:
+{% for key, value in env_vars.items() %}
+  {{ key }}: "{{ value }}"
+{%- endfor %}
+{% endif %}
+
+cloudsqlProxy:
+  enabled: {{ enable_proxy | lower }}
+{%- if enable_proxy %}
+  connectionName: "{{ db_instance_connection_name }}"
+  resources:
+    limits:
+      cpu: {{ proxy_resources.limits.cpu }}
+      memory: {{ proxy_resources.limits.memory }}
+    requests:
+      cpu: {{ proxy_resources.requests.cpu }}
+      memory: {{ proxy_resources.requests.memory }}
+{%- endif %}
