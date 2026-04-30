@@ -6,7 +6,7 @@ import subprocess
 from pathlib import Path
 
 import yaml
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import Environment, FileSystemLoader, StrictUndefined
 from pydantic import BaseModel, model_validator
 
 
@@ -77,7 +77,7 @@ def main() -> None:
     values_dir: Path = args.values
 
     base = yaml.safe_load((values_dir / "base.yaml").read_text())
-    jinja_env = Environment(loader=FileSystemLoader(str(template_dir)))
+    jinja_env = Environment(loader=FileSystemLoader(str(template_dir)), undefined=StrictUndefined)
     env_files = sorted(f for f in values_dir.glob("*.yaml") if f.stem != "base")
 
     for env_file in env_files:

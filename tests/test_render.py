@@ -1,5 +1,5 @@
 import pytest
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import Environment, FileSystemLoader, StrictUndefined
 from pydantic import ValidationError
 
 from scripts.render_templates import Resources, ResourceSpec, Values, deep_merge, render_template
@@ -9,7 +9,7 @@ TEMPLATE_DIR = "templates"
 
 @pytest.fixture
 def jinja_env():
-    return Environment(loader=FileSystemLoader(TEMPLATE_DIR))
+    return Environment(loader=FileSystemLoader(TEMPLATE_DIR), undefined=StrictUndefined)
 
 
 @pytest.fixture

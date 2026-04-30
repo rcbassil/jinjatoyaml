@@ -57,7 +57,7 @@ for env_file in "$VALUES_DIR"/*.yaml; do
     for template in "$TEMPLATE_DIR"/*.j2; do
         filename=$(basename "$template" .j2)
         output_path="$out_dir/$filename"
-        jinja2 "$template" "$merged_file" --format=yaml > "$output_path"
+        jinja2 "$template" "$merged_file" --format=yaml --strict > "$output_path"
         git add "$output_path"
         echo "Rendered $template -> $output_path"
     done
