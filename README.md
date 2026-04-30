@@ -269,6 +269,82 @@ The cross-repo push is an explicit, visible pipeline step rather than a side eff
 | Cross-repo push | Implicit — side effect of commit | Implicit — side effect of commit | Explicit pipeline step |
 | Template versioning | Unpinned — latest at clone time | Pinned to a submodule commit | Latest (or a ref you specify) |
 
+## Split-repo setup: values + templates here, manifests in a separate repo
+
+This is the simplest split. The pre-commit hook, render scripts, templates, and values all live in this repo. Only the rendered output (manifests / Helm values) goes to a separate repo. Only `--output` needs to point externally — `--templates` and `--values` stay local.
+
+### Option 1: Plain git clone
+
+Clone the manifests repo to a conventional path:
+
+```bash
+git clone <manifests-repo-url> ext/manifests-repo
+```
+
+Add it to `.gitignore`:
+
+```bash
+echo "ext/" >> .gitignore
+```
+
+Update `.pre-commit-config.yaml`:
+
+```yaml
+entry: uv run scripts/render_templates.py \
+  --templates templates \
+  --values    values \
+  --output    ext/manifests-repo/manifests
+```
+
+Add the cross-repo commit and push at the end of both render scripts:
+
+```bash
+git -C ext/manifests-repo add manifests/
+git -C ext/manifests-repo commit -m "chore: render manifests"
+git -C ext/manifests-repo push
+```
+
+### Option 2: Git submodule
+
+```bash
+git submodule add <manifests-repo-url> ext/manifests-repo
+```
+
+Update `.pre-commit-config.yaml`:
+
+```yaml
+entry: uv run scripts/render_templates.py \
+  --templates templates \
+  --values    values \
+  --output    ext/manifests-repo/manifests
+```
+
+Same cross-repo commit requirement applies. Tradeoff: the submodule pins a specific commit of the manifests repo — contributors must `git submodule update` to pick up changes others have pushed there.
+
+### Option 3: CI pipeline
+
+```bash
+git clone <this-repo-url>      source-repo
+git clone <manifests-repo-url> manifests-repo
+
+uv run source-repo/scripts/render_templates.py \
+  --templates source-repo/templates \
+  --values    source-repo/values \
+  --output    manifests-repo/manifests
+
+cd manifests-repo
+git add manifests/
+git commit -m "chore: render manifests"
+git push
+```
+
+| | Plain clone | Git submodule | CI pipeline |
+|---|---|---|---|
+| Pre-commit enforcement | Yes | Yes | No — pipeline only |
+| Contributor setup | Manual clone + convention | `git submodule update --init` | Standard clone |
+| Cross-repo push | Implicit — side effect of commit | Implicit — side effect of commit | Explicit pipeline step |
+| Manifests versioning | Unpinned — latest at clone time | Pinned to a submodule commit | Latest (or a ref you specify) |
+
 ## Adding a new environment
 
 1. Create `values/<env>.yaml` with any overrides on top of `values/base.yaml`.
