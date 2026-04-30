@@ -35,6 +35,47 @@ uv run scripts/render_templates.py
 
 Rendered manifests are written to `manifests/<env>/`.
 
+## Switching to the shell renderer
+
+A shell alternative (`scripts/render_templates.sh`) is available. It uses `yq` for YAML merging and `jinja2-cli` for rendering instead of the Python stack.
+
+**1. Install the extra dependencies:**
+
+`jinja2-cli` is a Python package and installs the same way everywhere:
+
+```bash
+pip install jinja2-cli
+```
+
+`yq` is a binary and varies by platform:
+
+| Platform | Command |
+|---|---|
+| macOS | `brew install yq` |
+| Linux (Debian/Ubuntu) | `snap install yq` |
+| Linux (binary) | `wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq && chmod +x /usr/local/bin/yq` |
+| Windows (Chocolatey) | `choco install yq` |
+| Windows (winget) | `winget install MikeFarah.yq` |
+
+**2. Update `.pre-commit-config.yaml`:**
+
+```yaml
+- id: render-jinja-templates
+  name: Render Jinja2 K8s Templates
+  entry: ./scripts/render_templates.sh
+  language: script
+  files: \.(j2|jinja2|yaml|yml)$
+  pass_filenames: false
+```
+
+**Trade-offs vs the Python renderer:**
+
+| | Python (`render_templates.py`) | Shell (`render_templates.sh`) |
+|---|---|---|
+| Dependencies | `uv` (managed) | `yq` + `jinja2-cli` (unmanaged) |
+| Schema validation | Pydantic — clear errors on bad values | Basic field checks only |
+| Test coverage | Full (`uv run pytest`) | None — tests only cover the Python path |
+
 ## Adding a new environment
 
 1. Create `values/<env>.yaml` with any overrides on top of `values/base.yaml`.
@@ -83,7 +124,8 @@ manifests/
   nprod/            # Rendered output (committed)
   prod/
 scripts/
-  render_templates.py
+  render_templates.py  # Python renderer (default)
+  render_templates.sh  # Shell renderer (alternative, see above)
 tests/
   test_render.py
 ```
