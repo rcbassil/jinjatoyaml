@@ -22,7 +22,7 @@ repos:
   - repo: local
     hooks:
       - id: helm-kubeconform
-        name: Validate Helm charts
+        name: Lint and validate Helm charts
         entry: scripts/validate_helm_charts.sh
         language: script
         files: ^charts/
