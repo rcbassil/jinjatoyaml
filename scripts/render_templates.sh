@@ -4,9 +4,9 @@
 
 set -euo pipefail
 
-TEMPLATE_DIR="./templates"
-OUTPUT_DIR="./manifests"
-VALUES_DIR="./values"
+TEMPLATE_DIR=""
+OUTPUT_DIR=""
+VALUES_DIR=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -16,6 +16,10 @@ while [[ $# -gt 0 ]]; do
         *) echo "Unknown option: $1"; exit 1 ;;
     esac
 done
+
+[[ -z "$TEMPLATE_DIR" ]] && { echo "ERROR: --templates is required"; exit 1; }
+[[ -z "$OUTPUT_DIR" ]]   && { echo "ERROR: --output is required";    exit 1; }
+[[ -z "$VALUES_DIR" ]]   && { echo "ERROR: --values is required";    exit 1; }
 
 BASE_VALUES="$VALUES_DIR/base.yaml"
 

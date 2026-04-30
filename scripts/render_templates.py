@@ -67,9 +67,9 @@ def load_values(env_name: str, base: dict, values_dir: Path) -> Values:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Render Jinja2 K8s templates per environment.")
-    parser.add_argument("--templates", default="templates", type=Path, metavar="DIR")
-    parser.add_argument("--output", default="manifests", type=Path, metavar="DIR")
-    parser.add_argument("--values", default="values", type=Path, metavar="DIR")
+    parser.add_argument("--templates", required=True, type=Path, metavar="DIR")
+    parser.add_argument("--output", required=True, type=Path, metavar="DIR")
+    parser.add_argument("--values", required=True, type=Path, metavar="DIR")
     args = parser.parse_args()
 
     template_dir: Path = args.templates

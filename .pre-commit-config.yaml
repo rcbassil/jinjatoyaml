@@ -3,7 +3,7 @@ repos:
     hooks:
       - id: render-jinja-templates
         name: Render Jinja2 K8s Templates
-        entry: uv run scripts/render_templates.py
+        entry: uv run scripts/render_templates.py --templates templates --output manifests --values values
         language: system
         files: \.(j2|jinja2|yaml|yml)$
         pass_filenames: false

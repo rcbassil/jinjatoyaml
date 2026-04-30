@@ -30,19 +30,19 @@ pre-commit install
 ## Rendering manually
 
 ```bash
-uv run scripts/render_templates.py [--templates DIR] [--output DIR] [--values DIR]
+uv run scripts/render_templates.py --templates DIR --output DIR --values DIR
 ```
 
-| Flag | Default | Description |
-|---|---|---|
-| `--templates` | `templates` | Directory containing `.j2` template files |
-| `--output` | `manifests` | Directory where rendered manifests are written |
-| `--values` | `values` | Directory containing `base.yaml` and env override files |
+| Flag | Description |
+|---|---|
+| `--templates` | Directory containing `.j2` template files |
+| `--output` | Directory where rendered manifests are written |
+| `--values` | Directory containing `base.yaml` and env override files |
 
-Example with custom paths:
+Example:
 
 ```bash
-uv run scripts/render_templates.py --templates src/templates --output out --values config/values
+uv run scripts/render_templates.py --templates templates --output manifests --values values
 ```
 
 Rendered manifests are written to `<output>/<env>/`.
@@ -80,10 +80,10 @@ pip install jinja2-cli
   pass_filenames: false
 ```
 
-Both scripts accept the same flags and can be called with custom paths:
+Both scripts require the same flags and can be called with custom paths:
 
 ```bash
-./scripts/render_templates.sh --templates src/templates --output out --values config/values
+./scripts/render_templates.sh --templates templates --output manifests --values values
 ```
 
 **Trade-offs vs the Python renderer:**
