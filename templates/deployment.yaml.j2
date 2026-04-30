@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ app_name }}
+  namespace: {{ namespace | default("default") }}
+  labels:
+    app: {{ app_name }}
+    env: {{ env }}
+    version: {{ image_tag }}
+spec:
+  replicas: {{ replicas | default(2) }}
+  selector:
+    matchLabels:
+      app: {{ app_name }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: {{ app_name }}
+        env: {{ env }}
+        version: {{ image_tag }}
+    spec:
+      containers:
+        - name: main
+          image: "{{ image_repo }}:{{ image_tag }}"
+          imagePullPolicy: {{ image_pull_policy | default("IfNotPresent") }}
+          ports:
+            - containerPort: {{ port }}
+          resources:
+            limits:
+              cpu: {{ resources.limits.cpu }}
+              memory: {{ resources.limits.memory }}
+            requests:
+              cpu: {{ resources.requests.cpu }}
+              memory: {{ resources.requests.memory }}
+          {% if env_vars %}
+          env:
+            {% for key, value in env_vars.items() %}
+            - name: {{ key }}
+              value: "{{ value }}"
+            {% endfor %}
+          {% endif %}
+
+        {% if enable_proxy %}
+        - name: cloud-sql-proxy
+          image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.1.0
+          args: ["--port=5432", "{{ db_instance_connection_name }}"]
+          securityContext:
+            runAsNonRoot: true
+          resources:
+            limits:
+              cpu: {{ proxy_resources.limits.cpu }}
+              memory: {{ proxy_resources.limits.memory }}
+            requests:
+              cpu: {{ proxy_resources.requests.cpu }}
+              memory: {{ proxy_resources.requests.memory }}
+        {% endif %}

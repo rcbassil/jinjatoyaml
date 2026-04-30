@@ -1,0 +1,29 @@
+app_name: "xpto-api"
+env: "prod"
+image_repo: "ghcr.io/rodrigo/xpto"
+image_tag: "v1.0.0"
+replicas: 3
+port: 8080
+
+resources:
+  limits:
+    cpu: "1000m"
+    memory: "1Gi"
+  requests:
+    cpu: "500m"
+    memory: "512Mi"
+
+enable_proxy: true
+db_instance_connection_name: "project:region:prod-instance"
+proxy_resources:
+  limits:
+    cpu: "100m"
+    memory: "128Mi"
+  requests:
+    cpu: "50m"
+    memory: "64Mi"
+
+env_vars:
+  LOG_LEVEL: "warn"
+  CACHE_ENABLED: "true"
+  DB_TIMEOUT: "30s"

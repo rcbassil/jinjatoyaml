@@ -1,0 +1,19 @@
+repos:
+  - repo: local
+    hooks:
+      - id: render-jinja-templates
+        name: Render Jinja2 K8s Templates
+        entry: uv run scripts/render_templates.py
+        language: system
+        files: \.(j2|jinja2|yaml|yml)$
+        pass_filenames: false
+
+  - repo: local
+    hooks:
+      - id: kubeconform
+        name: Validate Kubernetes manifests
+        entry: kubeconform
+        args: ["-strict", "-summary"]
+        language: golang
+        additional_dependencies: ["github.com/yannh/kubeconform/cmd/kubeconform@v0.7.0"]
+        files: ^manifests/.*\.yaml$

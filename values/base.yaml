@@ -1,0 +1,5 @@
+namespace: "default"
+image_pull_policy: "IfNotPresent"
+replicas: 2
+enable_proxy: false
+env_vars: {}
